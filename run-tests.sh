@@ -6,6 +6,6 @@
 
 pydocstyle xrootdpyfs && \
 sphinx-build -qnN docs docs/_build/html && \
-python setup.py test && \
+pytest tests/ && \
 sphinx-build -qnNW -b doctest docs docs/_build/doctest && \
 isort -rc -c tests/ xrootdpyfs/
