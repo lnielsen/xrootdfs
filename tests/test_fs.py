@@ -17,14 +17,13 @@ from functools import wraps
 from os.path import exists, join
 
 import pytest
+from conftest import mkurl
 from fs.errors import BackReferenceError, DestinationExistsError, \
     DirectoryNotEmptyError, FSError, InvalidPathError, RemoteConnectionError, \
     ResourceError, ResourceInvalidError, ResourceNotFoundError, \
     UnsupportedError
 from mock import Mock
 from XRootD.client.responses import XRootDStatus
-
-from conftest import mkurl
 from xrootdpyfs import XRootDPyFile, XRootDPyFS
 from xrootdpyfs.utils import spliturl
 
@@ -313,7 +312,7 @@ def test_open(tmppath):
     """Test fs.open()"""
     # Create a file to open.
     file_name = 'data/testa.txt'
-    contents = 'testa.txt\n'
+    expected_content = b'testa.txt\n'
     xrd_rooturl = mkurl(tmppath)
 
     # Open file w/ xrootd
@@ -322,7 +321,7 @@ def test_open(tmppath):
     assert xfile
     assert xfile.path.endswith("data/testa.txt")
     assert type(xfile) == XRootDPyFile
-    assert xfile.read() == contents
+    assert xfile.read() == expected_content
     xfile.close()
 
     # Test passing of querystring.
@@ -331,7 +330,7 @@ def test_open(tmppath):
     assert xfile
     assert xfile.path.endswith("data/testa.txt?xrd.wantprot=krb5")
     assert type(xfile) == XRootDPyFile
-    assert xfile.read() == contents
+    assert xfile.read() == expected_content
     xfile.close()
 
 
@@ -534,16 +533,17 @@ def test_movedir_good(tmppath):
     fs.movedir(dst_new, src_exists)
     fs.movedir(src_exists, dst_folder_new)
     assert not fs.exists(src_exists) and fs.exists(dst_folder_new)
-
-    fs.movedir(dst_folder_new, src_exists)
-    fs.movedir(src_exists, dst_exists, overwrite=True)
-    assert not fs.exists(src_exists) and fs.exists(dst_exists)
-    assert fs.isdir(dst_exists)
-
-    fs.movedir(dst_exists, src_exists)
-    fs.movedir(src_exists, dst_folder_exists, overwrite=True)
-    assert not fs.exists(src_exists) and fs.exists(dst_folder_exists)
     assert fs.isdir(dst_folder_exists)
+
+    # FIXME it looks like it fails moving a folder inside another folder
+    assert True == False
+    # fs.movedir(dst_folder_new, src_exists)
+    # assert not fs.exists(dst_folder_new)
+    # assert fs.exists(src_exists)
+    # assert fs.exists("data/afolder/anothernewfolder/")
+
+    fs.movedir(dst_folder_exists, dst_folder_new, overwrite=True)
+    assert not fs.exists(dst_folder_exists) and fs.exists(dst_folder_new)
 
 
 def test_move_bad(tmppath):
@@ -601,9 +601,11 @@ def test_movedir_bad(tmppath):
     dst_folder_exists = "data/bfolder/"
     dst_folder_new = "data/anothernewfolder/"
 
-    # Destination exists
+    # Source directory, destination file
     pytest.raises(
-        DestinationExistsError, fs.movedir, src_folder_exists, dst_exists)
+        ResourceInvalidError, fs.movedir, src_folder_exists, dst_exists)
+
+    # Destination exists
     pytest.raises(
         DestinationExistsError, fs.movedir, src_folder_exists,
         src_folder_exists)
