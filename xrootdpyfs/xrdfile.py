@@ -172,10 +172,6 @@ class XRootDPyFile(object):
             raise StopIteration
         return item
 
-    def next(self):
-        """Return next item for file iteration for Python 2."""
-        self.__next__()
-
     def read(self, sizehint=-1):
         """Read ``sizehint`` bytes from the file object.
 

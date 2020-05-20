@@ -123,15 +123,7 @@ class XRootDPyFS(FS):
         """Join path to base path."""
         # fs.path.pathjoin() omits the first '/' in self.base_path.
         # It is resolved by adding on an additional '/' to its return value.
-        if PY3:
-            return '/' + pathjoin(self.base_path, path)
-
-        if isinstance(path, binary_type):
-            path = path.decode(encoding)
-        # pathjoin always returns unicode
-        return (
-            u'/' + pathjoin(self.base_path.decode('utf-8'), path)
-        ).encode(encoding)
+        return '/' + pathjoin(self.base_path, path)
 
     def _raise_status(self, path, status):
         """Raise error based on status."""
@@ -437,18 +429,9 @@ class XRootDPyFS(FS):
 
         res = self._query(QueryCode.XATTR, fullpath)
 
-        if PY2:
-            _oss_ct = 'oss.ct'
-            _oss_mt = 'oss.mt'
-            _oss_at = 'oss.at'
-        else:
-            _oss_ct = b'oss.ct'
-            _oss_mt = b'oss.mt'
-            _oss_at = b'oss.at'
-
-        ct = res.get(_oss_ct, [None])[0]
-        mt = res.get(_oss_mt, [None])[0]
-        at = res.get(_oss_at, [None])[0]
+        ct = res.get(b'oss.ct', [None])[0]
+        mt = res.get(b'oss.mt', [None])[0]
+        at = res.get(b'oss.at', [None])[0]
 
         if ct:
             info['created_time'] = datetime.fromtimestamp(int(ct))
@@ -547,7 +530,7 @@ class XRootDPyFS(FS):
         if not self.exists(src):
             raise ResourceNotFoundError(src)
 
-        if self.isdir(src):
+        if not self.isfile(src):
             raise ResourceInvalidError(
                 src, msg="Source is not a file: %(path)s")
 
@@ -572,17 +555,12 @@ class XRootDPyFS(FS):
         """
         src, dst = self._p(src), self._p(dst)
 
-        # isdir/isfile throws an error if file/dir doesn't exists
         if not self.exists(src):
             raise ResourceNotFoundError(src)
 
-        if self.isfile(src):
+        if not self.isdir(src):
             raise ResourceInvalidError(
                 src, msg="Source is not a directory: %(path)s")
-
-        if self.isdir(src) and self.exists(dst) and self.isfile(dst):
-            msg = "Source is a directory but destination is a file: %(path)s"
-            raise ResourceInvalidError("{0} {1}".format(src, dst), msg=msg)
 
         return self._move(src, dst, overwrite=overwrite)
 
@@ -602,12 +580,14 @@ class XRootDPyFS(FS):
            source. Hence, if the source doesn't exists, it will remove the
            destination and then fail.
         """
-        _dst_exists = self.exists(dst)
-        if not overwrite and _dst_exists:
-            raise DestinationExistsError(dst)
+        if self.exists(dst):
+            if not overwrite:
+                raise DestinationExistsError(dst)
 
-        if overwrite and _dst_exists and self.isdir(dst):
-            self.removedir(dst, force=True)
+            if self.isfile(dst):
+                self.remove(dst)
+            elif self.isdir(dst):
+                self.removedir(dst, force=True)
 
         status, dummy = self._client.mv(src, dst)
 

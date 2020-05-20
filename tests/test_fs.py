@@ -527,23 +527,26 @@ def test_movedir_good(tmppath):
     assert fs.exists(dst_folder_exists)
     assert not fs.exists(dst_folder_new)
 
+    # Move to new folder (without trailing slash).
     fs.movedir(src_exists, dst_new)
     assert not fs.exists(src_exists) and fs.exists(dst_new)
 
-    fs.movedir(dst_new, src_exists)
+    fs.movedir(dst_new, src_exists)  # reset
+    # Move to new folder (with trailing slash).
     fs.movedir(src_exists, dst_folder_new)
     assert not fs.exists(src_exists) and fs.exists(dst_folder_new)
+
+    fs.movedir(dst_folder_new, src_exists)  # reset
+    # Move to existing filer with overwrite (i.e. will remove destination)
+    fs.movedir(src_exists, dst_exists, overwrite=True)
+    assert not fs.exists(src_exists) and fs.exists(dst_exists)
+    assert fs.isdir(dst_exists)
+
+    fs.movedir(dst_exists, src_exists)  # reset
+    # Move to existing folder with overwrite (i.e. will remove destination)
+    fs.movedir(src_exists, dst_folder_exists, overwrite=True)
+    assert not fs.exists(src_exists) and fs.exists(dst_folder_exists)
     assert fs.isdir(dst_folder_exists)
-
-    # FIXME it looks like it fails moving a folder inside another folder
-    assert True == False
-    # fs.movedir(dst_folder_new, src_exists)
-    # assert not fs.exists(dst_folder_new)
-    # assert fs.exists(src_exists)
-    # assert fs.exists("data/afolder/anothernewfolder/")
-
-    fs.movedir(dst_folder_exists, dst_folder_new, overwrite=True)
-    assert not fs.exists(dst_folder_exists) and fs.exists(dst_folder_new)
 
 
 def test_move_bad(tmppath):
@@ -578,15 +581,6 @@ def test_move_bad(tmppath):
     pytest.raises(ResourceNotFoundError, fs.move, src_new, dst_folder_exists)
     pytest.raises(ResourceNotFoundError, fs.move, src_new, dst_folder_new)
 
-    pytest.raises(
-        ResourceNotFoundError, fs.move, src_new, dst_exists)
-    pytest.raises(
-        ResourceNotFoundError, fs.move, src_new, dst_new)
-    pytest.raises(
-        ResourceNotFoundError, fs.move, src_new, dst_folder_exists)
-    pytest.raises(
-        ResourceNotFoundError, fs.move, src_new, dst_folder_new)
-
 
 def test_movedir_bad(tmppath):
     """Test move file."""
@@ -601,14 +595,10 @@ def test_movedir_bad(tmppath):
     dst_folder_exists = "data/bfolder/"
     dst_folder_new = "data/anothernewfolder/"
 
-    # Source directory, destination file
-    pytest.raises(
-        ResourceInvalidError, fs.movedir, src_folder_exists, dst_exists)
-
     # Destination exists
     pytest.raises(
         DestinationExistsError, fs.movedir, src_folder_exists,
-        src_folder_exists)
+        dst_exists)
     pytest.raises(
         DestinationExistsError, fs.movedir, src_folder_exists,
         dst_folder_exists)
